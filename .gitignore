@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+make_env.sh
+activate
+env
