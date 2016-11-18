@@ -3,6 +3,7 @@ from waitress import serve
 import logging
 import json
 from . import config
+from functools import wraps
 
 flask = Flask(__name__)
 
@@ -18,6 +19,25 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 Base.metadata.create_all(bind=engine)
 
+from .models import Account
+Base.metadata.create_all(bind=engine)
+
+def wac_headers(f):
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        # TODO
+        try:
+            wac = {}
+            wac['public_key'] = request.headers['Public-Key']
+            wac['asset_id'] = request.headers['Asset-Id']
+            wac['timestamp'] = int(request.headers['Timestamp'])
+        except Exception:
+            content = {'message': 'WAC header invalid'}
+            return json.dumps(content), 403
+
+        return f(wac, *args, **kwds)
+    return wrapper
+
 @flask.route("/")
 def index():
     return "GatewayServer v0.0000 :-)"
@@ -32,8 +52,11 @@ def details():
     }), mimetype='application/javascript')
 
 @flask.route("/v1/register", methods=["POST"])
-def register():
-    return json.dumps("TODO: Register call")
+@wac_headers
+def register(wac):
+#    wac_headers = read_wac_headers()
+    
+    return json.dumps("TODO: Register call - %s" % (str(wac)))
 
 @flask.route("/v1/forms", methods=["GET"])
 def forms():
