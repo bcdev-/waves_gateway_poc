@@ -1,3 +1,4 @@
 #Add config.py
 gateway.db
 sqlitebrowser.sh
+.idea
