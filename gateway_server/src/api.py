@@ -2,28 +2,15 @@ from flask import Flask, request, Response
 from waitress import serve
 import logging
 import json
-from . import cfg
+from . import cfg, Session
 from functools import wraps
 from .node import get_new_deposit_account
 
 flask = Flask(__name__)
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-
+from .models import Account, Balance, BlockchainTransaction
 from .address import public_key_to_account
 
-engine = create_engine(cfg.db_url, convert_unicode=True)
-db_session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
-                                         bind=engine))
-Base = declarative_base()
-Base.query = db_session.query_property()
-Base.metadata.create_all(bind=engine)
-
-from .models import Account, Balance
-Base.metadata.create_all(bind=engine)
 
 
 def wac_headers(f):
@@ -63,12 +50,14 @@ def details():
 @flask.route("/v1/register", methods=["POST"])
 @wac_headers
 def register(wac):
-    account = Account.query.filter_by(address=wac['address']).first()
+    session = Session()
+    account = session.query(Account).filter_by(address=wac['address']).first()
     if account == None:
         account = Account(address=wac['address'], public_key=wac['public_key'], deposit_address=get_new_deposit_account())
-        db_session.add(account)
-        db_session.commit()
+        session.add(account)
         logging.debug("Registering new account: " + str(account))
+
+    session.commit()
 
     data = {
         "greetings_form": "greetings",
@@ -94,14 +83,17 @@ def register(wac):
 @flask.route("/v1/forms/<string:form_name>", methods=["GET"])
 @wac_headers
 def forms(wac, form_name):
-    account = Account.query.filter_by(address=wac['address']).first()
+    session = Session()
+    account = session.query(Account).filter_by(address=wac['address']).first()
     if account is None:
         return "You are not registered. This should never happen, your wallet is malfunctioning.", 404
     if form_name == "greetings":
         s = "Greetings! Your deposit address: %s\nSupported currencies:\n\t%s\n" % (account.deposit_address, "\n\t".join([c["name"] + " - " + c["id"] for c in cfg.assets]))
-        s += "Your Balances: \n\t%s\n" % "\n\t".join([str(b.currency) + " = " + str(b.balance) for b in Balance.get_all_balances(db_session, account)])
+        s += "Your Balances: \n\t%s\n" % "\n\t".join([str(b.currency) + " = " + str(b.balance) for b in Balance.get_all_balances(session, account)])
+        s += "Your past deposits/withdrawals: \n\t%s\n" % "\n\t".join([str(b.timestamp_readable) + " " + str(b.currency) + " -> " + str(b.amount) for b in BlockchainTransaction.get_all_transactions(session, account)])
         return s
     return "Does not exist", 404
+
 
 class Api:
     def __init__(self, Gateway):

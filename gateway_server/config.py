@@ -11,8 +11,14 @@ gateway_address = "3N3qmHa1MBo3ZjDYJZbHNezY4RfhtTFxjXG"
 
 assets = [
     {
-        "id": "6T98h4M1orbGsXowDvNMEvBNHYUxnKxq26QYnP5JYX7P",
+        "id": "9882aTipAmkHHQcva6m99ViAELjE82p7C1F2suwXtq2N",
         "name": "Equestrian Bit"
     }]
 
 confirmations = 1
+
+start_from_block = 1600
+
+import logging
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
