@@ -22,7 +22,7 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 Base.metadata.create_all(bind=engine)
 
-from .models import Account
+from .models import Account, Balance
 Base.metadata.create_all(bind=engine)
 
 
@@ -71,18 +71,19 @@ def register(wac):
         logging.debug("Registering new account: " + str(account))
 
     data = {
-        "greeting": "greeting",
+        "greetings_form": "greetings",
         "asset_details_message": "This page is directly BELOW the asset info :-)",
         "buttons": [{
             "name": "Deposit",
             "description": "Deposit Equestrian Bits",
-            "iframe": "deposit",
+            "iframe_form": "deposit",
+            # TODO: SendWaves&Currency form
             "main_page": 1
         },
         {
             "name": "Withdraw",
             "description": "Withdraw Equestrian Bits",
-            "iframe": "withdraw",
+            "iframe_form": "withdraw",
             "main_page": 2
         }]
     }
@@ -91,11 +92,16 @@ def register(wac):
 
 
 @flask.route("/v1/forms/<string:form_name>", methods=["GET"])
-def forms(form_name):
-    if form_name == "greeting":
-        return "Greeting!"
-    return "Does not exist"
-
+@wac_headers
+def forms(wac, form_name):
+    account = Account.query.filter_by(address=wac['address']).first()
+    if account is None:
+        return "You are not registered. This should never happen, your wallet is malfunctioning.", 404
+    if form_name == "greetings":
+        s = "Greetings! Your deposit address: %s\nSupported currencies:\n\t%s\n" % (account.deposit_address, "\n\t".join([c["name"] + " - " + c["id"] for c in cfg.assets]))
+        s += "Your Balances: \n\t%s\n" % "\n\t".join([str(b.currency) + " = " + str(b.balance) for b in Balance.get_all_balances(db_session, account)])
+        return s
+    return "Does not exist", 404
 
 class Api:
     def __init__(self, Gateway):

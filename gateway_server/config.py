@@ -14,3 +14,5 @@ assets = [
         "id": "6T98h4M1orbGsXowDvNMEvBNHYUxnKxq26QYnP5JYX7P",
         "name": "Equestrian Bit"
     }]
+
+confirmations = 1
