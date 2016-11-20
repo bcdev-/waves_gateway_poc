@@ -2,7 +2,7 @@ import multiprocessing
 import logging
 import time
 from . import Session, node, cfg
-from .models import Account, BlockchainTransaction
+from .models import Account, Balance, BlockchainTransaction
 from .transaction import TransactionTypes
 
 
@@ -20,12 +20,22 @@ class BlockchainManager(multiprocessing.Process):
         # TODO: Try&catch
         while True:
             session = Session()
-            while self.current_block < node.get_current_height():
+            while self.current_block <= node.get_current_height():
                 logging.info("Scanning block %d" % self.current_block)
                 self._scan_block(session, self.current_block)
                 self.current_block += 1
+            self._update_balances(session)
             session.commit()
             time.sleep(1)
+
+    @staticmethod
+    def _update_balances(session):
+        new_transactions = session.query(BlockchainTransaction).filter_by(already_accounted=False)
+        for transaction in new_transactions:
+            # TODO: Please rewrite this... If someone runs two BlockchainManagers at once everything will go to...
+            balance = session.query(Balance).filter_by(address=transaction.address, currency=transaction.currency).first()
+            balance.balance += transaction.amount
+            transaction.already_accounted = True
 
     @staticmethod
     def _scan_block(session, height):
@@ -41,12 +51,3 @@ class BlockchainManager(multiprocessing.Process):
                     # TODO: Check if currency is defined
                     blockchain_transaction = BlockchainTransaction(tx["id"], account.address, tx["type"], tx["timestamp"], tx["assetId"], tx["amount"])
                     session.add(blockchain_transaction)
-
-        """
-        all_accounts = session.query(Account).all()
-        for account in all_accounts:
-            print(account.deposit_address)
-            transactions = node.get_transactions_for_account(account.deposit_address)
-            for tx in transactions:
-                print(tx)
-        """

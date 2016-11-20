@@ -101,6 +101,6 @@ class Api:
 
     @staticmethod
     def start():
-        # flask.run(host='0.0.0.0', port=config.port, debug=True)
+        # flask.run(host='0.0.0.0', port=cfg.port, debug=True)
         serve(flask, host='0.0.0.0', port=cfg.port, threads=1)
 
