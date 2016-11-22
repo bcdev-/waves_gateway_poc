@@ -5,12 +5,11 @@ import json
 from . import cfg, Session
 from functools import wraps
 from .node import get_new_deposit_account
+from .models import Account
+from .address import public_key_to_account
+from extensions.forms import list_of_forms
 
 flask = Flask(__name__)
-
-from .models import Account, Balance, BlockchainTransaction
-from .address import public_key_to_account
-
 
 
 def wac_headers(f):
@@ -52,7 +51,7 @@ def details():
 def register(wac):
     session = Session()
     account = session.query(Account).filter_by(address=wac['address']).first()
-    if account == None:
+    if account is None:
         account = Account(address=wac['address'], public_key=wac['public_key'], deposit_address=get_new_deposit_account())
         session.add(account)
         logging.debug("Registering new account: " + str(account))
@@ -84,15 +83,14 @@ def register(wac):
 @wac_headers
 def forms(wac, form_name):
     session = Session()
+
     account = session.query(Account).filter_by(address=wac['address']).first()
     if account is None:
-        return "You are not registered. This should never happen, your wallet is malfunctioning.", 404
-    if form_name == "greetings":
-        s = "Greetings! Your deposit address: %s\nSupported currencies:\n\t%s\n" % (account.deposit_address, "\n\t".join([c["name"] + " - " + c["id"] for c in cfg.assets]))
-        s += "Your Balances: \n\t%s\n" % "\n\t".join([str(b.currency) + " = " + str(b.balance) for b in Balance.get_all_balances(session, account)])
-        s += "Your past deposits/withdrawals: \n\t%s\n" % "\n\t".join([str(b.timestamp_readable) + " " + str(b.currency) + " -> " + str(b.amount) for b in BlockchainTransaction.get_all_transactions(session, account)])
-        return s
-    return "Does not exist", 404
+        return "You are not registered. This should never happen, your wallet is malfunctioning.", 500
+
+    if form_name in list_of_forms:
+        return list_of_forms[form_name](wac, session, form_name, account)
+    return "Form does not exist", 404
 
 
 class Api:

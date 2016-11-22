@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+import sys 
+sys.path.append("..")
 import config
-import sys
 import requests
 import src.address
 import time

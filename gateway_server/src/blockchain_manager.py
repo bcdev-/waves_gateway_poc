@@ -4,6 +4,7 @@ import time
 from . import Session, node, cfg
 from .models import Account, Balance, BlockchainTransaction
 from .transaction import TransactionTypes
+from extensions.bank_manager import BankManager
 
 
 # BlockchainManager is single-threaded for now
@@ -12,6 +13,7 @@ class BlockchainManager(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self)
         self.current_block = cfg.start_from_block
+        self.bank_manager = BankManager()
 
     def run(self):
         logging.info("Blockchain manager started")
@@ -25,6 +27,8 @@ class BlockchainManager(multiprocessing.Process):
                 self._scan_block(session, self.current_block)
                 self.current_block += 1
             self._update_balances(session)
+            self.bank_manager.tick(session)
+            # TODO: Update balances from bank
             session.commit()
             time.sleep(1)
 

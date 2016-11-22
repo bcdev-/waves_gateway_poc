@@ -17,7 +17,7 @@ assets = [
 
 confirmations = 1
 
-start_from_block = 1600
+start_from_block = 2980
 
 import logging
 logging.getLogger("requests").setLevel(logging.WARNING)

@@ -1,13 +1,15 @@
 import logging
 import datetime
 from . import cfg, Base
+from extensions.banking_models import AccountExt, BankDepositExt, BankWithdrawalExt
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
 
 
-class Account(Base):
+class Account(Base, AccountExt):
     __tablename__ = 'accounts'
 
     def __init__(self, address, public_key, deposit_address):
+        AccountExt.__init__(self)
         self.address = address
         self.public_key = public_key
         self.deposit_address = deposit_address
@@ -84,3 +86,27 @@ class BlockchainTransaction(Base):
     @staticmethod
     def get_all_transactions(session, account):
         return session.query(BlockchainTransaction).filter_by(address=account.address).all()
+
+
+class BankDeposit(Base, BankDepositExt):
+    __tablename__ = 'bank_deposit'
+
+    def __init__(self, address, currency, amount, *args, **kwargs):
+        self.address = address
+        self.currency = currency
+        self.amount = amount
+        BankDepositExt.__init__(self, *args, **kwargs)
+
+    address = Column(Integer, ForeignKey('accounts.address'), index=True)
+    # Blockchain asset ID
+    currency = Column(String)
+    amount = Column(BigInteger)
+
+
+class BankWithdrawal(Base, BankWithdrawalExt):
+    __tablename__ = 'bank_withdrawal'
+
+    address = Column(Integer, ForeignKey('accounts.address'), index=True)
+    # Blockchain asset ID
+    currency = Column(String)
+    amount = Column(BigInteger)

@@ -8,6 +8,6 @@ Session = sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine)
 Base = declarative_base()
-#Base.query = Session.query_property()
 from . import models
+import extensions.banking_models
 Base.metadata.create_all(bind=engine)
