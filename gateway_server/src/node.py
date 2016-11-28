@@ -1,9 +1,11 @@
 from requests import get, post
-from .cfg import waves_api_url, waves_api_key
+from .cfg import waves_api_url, waves_api_key, gateway_address, default_fee
 from unittest import TestCase
 from .exceptions import NodeError
+import json
 
 
+# TODO: Consider making new deposit accounts deterministically from the user accounts
 def get_new_deposit_account():
     try:
         url = waves_api_url + "/addresses"
@@ -44,6 +46,28 @@ def get_block(height):
 
 def get_transactions_for_block(height):
     return get_block(height)["transactions"]
+
+
+def send_currency(currency: str, recipient: str, amount: int) -> str:
+    try:
+        # TODO: Meaningful attachment
+        url = waves_api_url + "/assets/transfer"
+        headers = {'api_key': waves_api_key}
+        data = {
+          "recipient": recipient,
+          "assetId": currency,
+          "feeAsset": None,
+          "amount": amount,
+          "attachment": "",
+          "sender": gateway_address,
+          "fee": default_fee
+        }
+        r = post(url, headers=headers, data=json.dumps(data))
+        print(r.json())
+        return r.json()['id']
+    except Exception:
+        # TODO: Log the error message from the node if available
+        raise NodeError()
 
 
 class TestNode(TestCase):

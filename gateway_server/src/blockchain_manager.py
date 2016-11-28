@@ -1,8 +1,9 @@
 import multiprocessing
 import logging
 import time
+from src.node import send_currency
 from . import Session, node, cfg
-from .models import Account, Balance, BlockchainTransaction
+from .models import Account, Balance, BlockchainTransaction, BankDeposit
 from .transaction import TransactionTypes
 from extensions.bank_manager import BankManager
 
@@ -28,9 +29,30 @@ class BlockchainManager(multiprocessing.Process):
                 self.current_block += 1
             self._update_balances(session)
             self.bank_manager.tick(session)
-            # TODO: Update balances from bank
+
+            # I'm assuming that we're withdrawing to the wallet immediately for now
+            # self._account_banking_deposits(session)
+            self._withdraw_banking_deposits(session)
+
             session.commit()
+            session.flush()
             time.sleep(1)
+
+    @staticmethod
+    def _withdraw_banking_deposits(session: Session):
+        # Bank deposit can either be "accounted" or it can be withdrawn to the wallet
+        # TODO: Add additional if's for KYC and such things
+        new_deposits = session.query(BankDeposit).filter_by(already_accounted=False, waves_transaction_id=None)
+        for deposit in new_deposits:
+            # TODO: Please rewrite this... If someone runs two BlockchainManagers at once everything will go to...
+            # TODO: Check if such account exists and is not banned for example
+            # TODO: Treat empty waves_transaction_id as a failure
+            deposit.waves_transaction_id = ""
+            session.commit()
+            session.flush()
+            deposit.waves_transaction_id = send_currency(deposit.currency, deposit.address, deposit.amount)
+            session.commit()
+            session.flush()
 
     @staticmethod
     def _update_balances(session):
@@ -40,6 +62,16 @@ class BlockchainManager(multiprocessing.Process):
             balance = session.query(Balance).filter_by(address=transaction.address, currency=transaction.currency).first()
             balance.balance += transaction.amount
             transaction.already_accounted = True
+
+    @staticmethod
+    def _account_banking_deposits(session):
+        # Bank deposit can either be "accounted" or it can be withdrawn to the wallet
+        new_deposits = session.query(BankDeposit).filter_by(already_accounted=False, waves_transaction_id=None)
+        for deposit in new_deposits:
+            # TODO: Please rewrite this... If someone runs two BlockchainManagers at once everything will go to...
+            balance = session.query(Balance).filter_by(address=deposit.address, currency=deposit.currency).first()
+            balance.balance += deposit.amount
+            deposit.already_accounted = True
 
     @staticmethod
     def _scan_block(session, height):

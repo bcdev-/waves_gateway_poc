@@ -17,7 +17,8 @@ class BankManager:
             file = open("/var/run/shm/deposit.txt").read()
             os.unlink("/var/run/shm/deposit.txt")
             deposit = json.loads(file)
-            deposit = BankDeposit("address", "currency", 1000000)
+            deposit = BankDeposit("3N7ubQBSZB7aSPvmQfriAADPjJqprWhxYbn", "BEbJsWWmyGtUuNtFckRFkmHq4ivw2EEYZJw5q74WUiBm", 1000000)
             session.add(deposit)
 #            session.query()
-        except FileNotFoundError: pass
+        except FileNotFoundError:
+            pass

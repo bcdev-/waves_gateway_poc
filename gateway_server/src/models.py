@@ -3,6 +3,7 @@ import datetime
 from . import cfg, Base
 from extensions.banking_models import AccountExt, BankDepositExt, BankWithdrawalExt
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
+from sqlalchemy.orm.session import Session
 
 
 class Account(Base, AccountExt):
@@ -30,14 +31,15 @@ class Balance(Base):
     def __init__(self, address, currency):
         self.address = address
         self.currency = currency
-        self.balance = 0
 
     address = Column(Integer, ForeignKey('accounts.address'), primary_key=True)
     currency = Column(String, primary_key=True)
-    balance = Column(BigInteger)
+    balance = Column(BigInteger, default=0)
+    withdraw_to_blockchain_balance = Column(BigInteger, default=0)
+    withdraw_to_blockchain_automatically = Column(Boolean, default=True)
 
     @staticmethod
-    def get_all_balances(session, account):
+    def get_all_balances(session: Session, account: Account):
         balances = session.query(Balance).filter_by(address=account.address).all()
         final_balances = []
         missing_currencies = set([id["id"] for id in cfg.assets])
@@ -84,7 +86,7 @@ class BlockchainTransaction(Base):
         return datetime.datetime.fromtimestamp(self.timestamp / 1000.).strftime('%d.%m.%Y %H:%M:%S')
 
     @staticmethod
-    def get_all_transactions(session, account):
+    def get_all_transactions(session: Session, account: Account):
         return session.query(BlockchainTransaction).filter_by(address=account.address).all()
 
 
@@ -97,10 +99,17 @@ class BankDeposit(Base, BankDepositExt):
         self.amount = amount
         BankDepositExt.__init__(self, *args, **kwargs)
 
+    @staticmethod
+    def get_all(session: Session, account: Account) -> list:
+        return session.query(BankDeposit).filter_by(address=account.address).all()
+
     address = Column(Integer, ForeignKey('accounts.address'), index=True)
     # Blockchain asset ID
     currency = Column(String)
     amount = Column(BigInteger)
+
+    already_accounted = Column(Boolean, default=False, index=True)
+    waves_transaction_id = Column(String, nullable=True, default=None)
 
 
 class BankWithdrawal(Base, BankWithdrawalExt):
@@ -110,3 +119,5 @@ class BankWithdrawal(Base, BankWithdrawalExt):
     # Blockchain asset ID
     currency = Column(String)
     amount = Column(BigInteger)
+
+    already_accounted = Column(Boolean, default=False, index=True)
