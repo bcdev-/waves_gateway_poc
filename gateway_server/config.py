@@ -21,7 +21,7 @@ assets = [
 # TODO: Honor confirmations
 confirmations = 1
 
-start_from_block = 2236
+start_from_block = 2560
 
 import logging
 logging.getLogger("requests").setLevel(logging.WARNING)

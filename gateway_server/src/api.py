@@ -46,39 +46,6 @@ def details():
     }), mimetype='application/javascript')
 
 
-@flask.route("/v1/register", methods=["POST"])
-@wac_headers
-def register(wac):
-    session = Session()
-    account = session.query(Account).filter_by(address=wac['address']).first()
-    if account is None:
-        account = Account(address=wac['address'], public_key=wac['public_key'], deposit_address=get_new_deposit_account())
-        session.add(account)
-        logging.debug("Registering new account: " + str(account))
-
-    session.commit()
-
-    data = {
-        "greetings_form": "greetings",
-        "asset_details_message": "This page is directly BELOW the asset info :-)",
-        "buttons": [{
-            "name": "Deposit",
-            "description": "Deposit Equestrian Bits",
-            "iframe_form": "deposit",
-            # TODO: SendWaves&Currency form
-            "main_page": 1
-        },
-        {
-            "name": "Withdraw",
-            "description": "Withdraw Equestrian Bits",
-            "iframe_form": "withdraw",
-            "main_page": 2
-        }]
-    }
-
-    return json.dumps(data)
-
-
 @flask.route("/v1/forms/<string:form_name>", methods=["GET"])
 @wac_headers
 def forms(wac, form_name):
@@ -86,10 +53,15 @@ def forms(wac, form_name):
 
     account = session.query(Account).filter_by(address=wac['address']).first()
     if account is None:
-        return "You are not registered. This should never happen, your wallet is malfunctioning.", 500
+        account = Account(address=wac['address'], public_key=wac['public_key'], deposit_address=get_new_deposit_account())
+        session.add(account)
+        session.commit()
+        logging.debug("Registering new account: " + str(account))
 
     if form_name in list_of_forms:
-        return list_of_forms[form_name](wac, session, form_name, account)
+        ret_val = list_of_forms[form_name](wac, session, form_name, account)
+        session.commit()
+        return ret_val
     return "Form does not exist", 404
 
 
