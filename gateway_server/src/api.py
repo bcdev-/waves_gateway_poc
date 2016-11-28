@@ -18,11 +18,11 @@ def wac_headers(f):
         # TODO
         try:
             wac = {}
-            wac['public_key'] = request.headers['Public-Key']
-            wac['asset_id'] = request.headers['Asset-Id']
-            wac['timestamp'] = int(request.headers['Timestamp'])
-            assert(request.headers['Address'] == public_key_to_account(wac['public_key']))
-            wac['address'] = request.headers['Address']
+            wac['public_key'] = request.args['Public-Key']
+            wac['asset_id'] = request.args['Asset-Id']
+            wac['timestamp'] = int(request.args['Timestamp'])
+            assert(request.args['Address'] == public_key_to_account(wac['public_key']))
+            wac['address'] = request.args['Address']
         except Exception:
             content = {'message': 'WAC header invalid'}
             return json.dumps(content), 403

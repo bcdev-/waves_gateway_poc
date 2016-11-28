@@ -1,5 +1,7 @@
 import logging
 import datetime
+import string
+import random
 from src import cfg, Base
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
 
@@ -9,9 +11,13 @@ from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
 class AccountExt:
     def __init__(self):
         # TODO: Passthrough parameters here please. :-)
+        self.iban = self._create_mock_iban_account()
         pass
 
-#    address = Column(Integer, ForeignKey('accounts.address'), primary_key=True)
+    def _create_mock_iban_account(self) -> str:
+        return "EQ" + ''.join(random.choice(string.digits) for _ in range(15))
+
+    iban = Column(String, index=True)
 #    kyc_name = Column(String, nullable=True)
 #    kyc_surname = Column(String, nullable=True)
 #    kyc_address = Column(String, nullable=True)

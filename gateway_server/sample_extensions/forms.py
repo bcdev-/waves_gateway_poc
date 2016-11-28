@@ -14,8 +14,13 @@ def greetings_form(wac, session: Session, form_name: str, account: Account):
         [str(b.timestamp_readable) + " " + str(b.currency) + " -> " + str(b.amount) for b in
          BlockchainTransaction.get_all_transactions(session, account)])
     s += "Your bank deposits: \n\t%s\n" % "\n\t".join(
-        [str(d.currency) + " -> " + str(d.amount) for d in BankDeposit.get_all(session, account)]
+        [str(d.currency) + " -> " + str(d.amount) + " - txid: " + str(d.waves_transaction_id) for d in BankDeposit.get_all(session, account)]
     )
+    s += "Your bank deposit account: %s\n" % account.iban
     return s
 
-list_of_forms = {"greetings": greetings_form}
+
+def top_up(wac, session: Session, form_name: str, account: Account):
+    return "Top up!"
+
+list_of_forms = {"greetings": greetings_form, "top-up": top_up}

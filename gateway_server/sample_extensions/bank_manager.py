@@ -5,20 +5,13 @@ import logging
 import json
 import os
 from src.models import BankDeposit, BankWithdrawal
+from .banksim import BankSim
 
 
 class BankManager:
     def __init__(self):
-        pass
+        self.bank_sim = BankSim()
+        self.bank_sim.start()
 
     def tick(self, session):
-        logging.debug("Bank manager running...")
-        try:
-            file = open("/var/run/shm/deposit.txt").read()
-            os.unlink("/var/run/shm/deposit.txt")
-            deposit = json.loads(file)
-            deposit = BankDeposit("3N7ubQBSZB7aSPvmQfriAADPjJqprWhxYbn", "BEbJsWWmyGtUuNtFckRFkmHq4ivw2EEYZJw5q74WUiBm", 1000000)
-            session.add(deposit)
-#            session.query()
-        except FileNotFoundError:
-            pass
+        pass
