@@ -26,7 +26,7 @@ def index():
                                                                     amount % (10.**assets[0]["digits"]))
     session.commit()
     return """Welcome to the Bank simulator!<br/>Make a deposit:
-    <form method='POST' target='/'>
+    <form method='POST' action='/'>
     Account [IBAN]:<input name='account'/><br/>
     Amount [Bits]:<input name='amount'/><br/>
     <input type='submit'/></form>"""

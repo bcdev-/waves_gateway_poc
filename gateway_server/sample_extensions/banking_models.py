@@ -18,8 +18,7 @@ class AccountExt:
         return "EQ" + ''.join(random.choice(string.digits) for _ in range(15))
 
     iban = Column(String, index=True)
-#    kyc_name = Column(String, nullable=True)
-#    kyc_surname = Column(String, nullable=True)
+    kyc_name = Column(String, nullable=True, default=None)
 #    kyc_address = Column(String, nullable=True)
 #    kyc_postcode = Column(String, nullable=True)
 #    kyc_city = Column(String, nullable=True)

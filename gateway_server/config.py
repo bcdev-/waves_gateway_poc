@@ -21,9 +21,10 @@ assets = [
 # TODO: Honor confirmations
 confirmations = 1
 
-start_from_block = 2560
+start_from_block = 2775
 
 import logging
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+session_timeout = 600  # 10 minutes

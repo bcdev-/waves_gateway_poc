@@ -1,5 +1,8 @@
 import logging
 import datetime
+import time
+import random
+import string
 from . import cfg, Base
 from extensions.banking_models import AccountExt, BankDepositExt, BankWithdrawalExt
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
@@ -32,7 +35,7 @@ class Balance(Base):
         self.address = address
         self.currency = currency
 
-    address = Column(Integer, ForeignKey('accounts.address'), primary_key=True)
+    address = Column(String, ForeignKey('accounts.address'), primary_key=True)
     currency = Column(String, primary_key=True)
     balance = Column(BigInteger, default=0)
     withdraw_to_blockchain_balance = Column(BigInteger, default=0)
@@ -73,7 +76,7 @@ class BlockchainTransaction(Base):
 
     # TODO: Block [confirmations]
     transaction_id = Column(String, primary_key=True)
-    address = Column(Integer, ForeignKey('accounts.address'), index=True)
+    address = Column(String, ForeignKey('accounts.address'), index=True)
     type = Column(Integer)
     timestamp = Column(BigInteger)
     currency = Column(String, nullable=True)
@@ -103,7 +106,7 @@ class BankDeposit(Base, BankDepositExt):
     def get_all(session: Session, account: Account) -> list:
         return session.query(BankDeposit).filter_by(address=account.address).all()
 
-    address = Column(Integer, ForeignKey('accounts.address'), index=True)
+    address = Column(String, ForeignKey('accounts.address'), index=True)
     # Blockchain asset ID
     currency = Column(String)
     amount = Column(BigInteger)
@@ -115,9 +118,31 @@ class BankDeposit(Base, BankDepositExt):
 class BankWithdrawal(Base, BankWithdrawalExt):
     __tablename__ = 'bank_withdrawal'
 
-    address = Column(Integer, ForeignKey('accounts.address'), index=True)
+    address = Column(String, ForeignKey('accounts.address'), index=True)
     # Blockchain asset ID
     currency = Column(String)
     amount = Column(BigInteger)
 
     already_accounted = Column(Boolean, default=False, index=True)
+
+
+class WACSession(Base):
+    __tablename__ = 'wac_sessions'
+    SESSION_ID_LENGTH = 64
+
+    def __init__(self, address, asset_id):
+        self.address = address
+        self.asset_id = asset_id
+        self.timeout = int(time.time()) + cfg.session_timeout
+        self.session_id = ''.join(random.choice(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+                                  for _ in range(self.SESSION_ID_LENGTH))
+
+    session_id = Column(String, primary_key=True)
+    address = Column(String, ForeignKey('accounts.address'))
+    timeout = Column(BigInteger, index=True)
+    asset_id = Column(String)
+
+    @staticmethod
+    def truncate_old():
+        # TODO
+        pass

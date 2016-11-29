@@ -2,10 +2,11 @@ from flask import Flask, request, Response
 from waitress import serve
 import logging
 import json
+import time
 from . import cfg, Session
 from functools import wraps
 from .node import get_new_deposit_account
-from .models import Account
+from .models import Account, WACSession
 from .address import public_key_to_account
 from extensions.forms import list_of_forms
 
@@ -15,25 +16,42 @@ flask = Flask(__name__)
 def wac_headers(f):
     @wraps(f)
     def wrapper(*args, **kwds):
-        # TODO
+        # TODO: Require timestamp
+        # TODO: Require auth hash
+        # TODO: Rewrite WAC to a class
+        session = Session()
         try:
-            wac = {}
-            wac['public_key'] = request.args['Public-Key']
-            wac['asset_id'] = request.args['Asset-Id']
-            wac['timestamp'] = int(request.args['Timestamp'])
-            assert(request.args['Address'] == public_key_to_account(wac['public_key']))
-            wac['address'] = request.args['Address']
+            wac = dict()
+            if 'Session-Id' in request.args:
+                # TODO: Respect session's timeout
+                # TODO: When timestamp becomes required, just add 1ms to the timestamp
+                wac_session = session.query(WACSession).filter_by(session_id=request.args['Session-Id']).first()
+                account = session.query(Account).filter_by(address=wac_session.address).first()
+                wac['public_key'] = account.public_key
+                wac['address'] = account.address
+                wac['asset_id'] = wac_session.asset_id
+                wac['timestamp'] = int(time.time() * 1000)
+
+            else:
+                wac['timestamp'] = int(request.args['Timestamp'])
+                wac['public_key'] = request.args['Public-Key']
+                wac['asset_id'] = request.args['Asset-Id']
+                assert(request.args['Address'] == public_key_to_account(wac['public_key']))
+                wac['address'] = request.args['Address']
+                wac_session = WACSession(wac['address'], wac['asset_id'])
+                session.add(wac_session)
+            wac['session_id'] = wac_session.session_id
         except Exception:
             content = {'message': 'WAC header invalid'}
             return json.dumps(content), 403
 
-        return f(wac, *args, **kwds)
+        return f(wac, session, *args, **kwds)
     return wrapper
 
 
 @flask.route("/")
 def index():
-    return "GatewayServer v0.0000 :-)"
+    return "GatewayServer v0.0000"
 
 
 @flask.route("/v1/details")
@@ -48,9 +66,7 @@ def details():
 
 @flask.route("/v1/forms/<string:form_name>", methods=["GET"])
 @wac_headers
-def forms(wac, form_name):
-    session = Session()
-
+def forms(wac, session, form_name):
     account = session.query(Account).filter_by(address=wac['address']).first()
     if account is None:
         account = Account(address=wac['address'], public_key=wac['public_key'], deposit_address=get_new_deposit_account())
