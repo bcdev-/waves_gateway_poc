@@ -3,7 +3,7 @@ import logging
 import time
 from src.node import send_currency
 from . import Session, node, cfg
-from .models import Account, Balance, BlockchainTransaction, BankDeposit
+from .models import Account, Balance, BlockchainTransaction, BankDeposit, Parameters
 from .transaction import TransactionTypes
 from extensions.bank_manager import BankManager
 
@@ -13,7 +13,7 @@ from extensions.bank_manager import BankManager
 class BlockchainManager(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self)
-        self.current_block = cfg.start_from_block
+#        self.current_block = cfg.start_from_block
         self.bank_manager = BankManager()
 
     def run(self):
@@ -23,10 +23,17 @@ class BlockchainManager(multiprocessing.Process):
         # TODO: Try&catch
         while True:
             session = Session()
-            while self.current_block <= node.get_current_height():
-                logging.info("Scanning block %d" % self.current_block)
-                self._scan_block(session, self.current_block)
-                self.current_block += 1
+            # TODO: This is overly simplistic. What if there is an orphan?
+            current_block = Parameters.get(session, "current_block", cfg.start_from_block)
+            if current_block < cfg.start_from_block:
+                current_block = cfg.start_from_block
+                Parameters.set(session, "current_block", current_block)
+
+            while current_block <= node.get_current_height():
+                logging.info("Scanning block %d" % current_block)
+                self._scan_block(session, current_block)
+                current_block += 1
+                Parameters.set(session, "current_block", current_block)
             self._update_balances(session)
             self.bank_manager.tick(session)
 
@@ -53,6 +60,9 @@ class BlockchainManager(multiprocessing.Process):
             deposit.waves_transaction_id = send_currency(deposit.currency, deposit.address, deposit.amount)
             session.commit()
             session.flush()
+            # Send 0.1 Waves for transaction fees if the client has less than 0.01
+            if node.get_waves_balance(deposit.address) < 1000000:
+                send_currency(None, deposit.address, 10000000)
 
     @staticmethod
     def _update_balances(session):

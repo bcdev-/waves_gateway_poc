@@ -70,6 +70,43 @@ def send_currency(currency: str, recipient: str, amount: int) -> str:
         raise NodeError()
 
 
+def get_balances(address: str) -> dict:
+    try:
+        # TODO: Meaningful attachment
+        url = waves_api_url + "/assets/balance/%s" % address
+        r = get(url)
+        print(r.json())
+        assert(r.json()['address'] == address)
+
+        balances = dict()
+        for asset in r.json()['balances']:
+            balances[asset['assetId']] = asset['balance']
+
+        return balances
+    except Exception:
+        # TODO: Log the error message from the node if available
+        raise NodeError()
+
+
+def get_currency_balance(address: str, currency: str) -> int:
+    balances = get_balances(address)
+    if currency in balances:
+        return balances[currency]
+    return 0
+
+
+def get_waves_balance(address: str) -> int:
+    try:
+        # TODO: Meaningful attachment
+        url = waves_api_url + "/addresses/balance/%s" % address
+        r = get(url)
+        return r.json()['balance']
+
+    except Exception:
+        # TODO: Log the error message from the node if available
+        raise NodeError()
+
+
 class TestNode(TestCase):
     def test_new_deposit_account(self):
         a1 = get_new_deposit_account()

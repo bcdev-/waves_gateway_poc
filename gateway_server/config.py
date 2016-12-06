@@ -13,15 +13,16 @@ default_fee = 100000
 
 assets = [
     {
-        "id": "BEbJsWWmyGtUuNtFckRFkmHq4ivw2EEYZJw5q74WUiBm",
-        "name": "Equestrian Bit",
-        "digits": 2
+        "id": "SsWUnvrBLJjxsqQedKjG4wtR2UyJGoWL4AU6UqRHhge",
+        "name": "US Dollar",
+        "digits": 2,
+        "suffix": " USD"
     }]
 
 # TODO: Honor confirmations
 confirmations = 1
 
-start_from_block = 2775
+start_from_block = 1
 
 import logging
 logging.getLogger("requests").setLevel(logging.WARNING)

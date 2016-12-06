@@ -3,6 +3,7 @@ import datetime
 import time
 import random
 import string
+import json
 from . import cfg, Base
 from extensions.banking_models import AccountExt, BankDepositExt, BankWithdrawalExt
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
@@ -40,6 +41,13 @@ class Balance(Base):
     balance = Column(BigInteger, default=0)
     withdraw_to_blockchain_balance = Column(BigInteger, default=0)
     withdraw_to_blockchain_automatically = Column(Boolean, default=True)
+
+    @property
+    def currency_name(self) -> str:
+        for asset in cfg.assets:
+            if asset['id'] == self.currency:
+                return asset['name']
+        return "UnknownCurrency<%s>" % self.currency
 
     @staticmethod
     def get_all_balances(session: Session, account: Account):
@@ -111,6 +119,21 @@ class BankDeposit(Base, BankDepositExt):
     currency = Column(String)
     amount = Column(BigInteger)
 
+    @property
+    def currency_name(self) -> str:
+        for asset in cfg.assets:
+            if asset['id'] == self.currency:
+                return asset['name']
+        return "UnknownCurrency<%s>" % self.currency
+
+    @property
+    def amount_formatted(self) -> str:
+        for asset in cfg.assets:
+            if asset['id'] == self.currency:
+                format = "%%d.%%.%dd%%s" % asset['digits']
+                return format % (int(self.amount / (10**asset['digits'])),
+                                 int(self.amount % (10**asset['digits'])), asset['suffix'])
+
     already_accounted = Column(Boolean, default=False, index=True)
     waves_transaction_id = Column(String, nullable=True, default=None)
 
@@ -146,3 +169,35 @@ class WACSession(Base):
     def truncate_old():
         # TODO
         pass
+
+
+class Parameters(Base):
+    __tablename__ = 'parameters'
+
+    def __init__(self, key: str, value):
+        self.key = key
+        self.value = json.dumps(value)
+
+    key = Column(String, primary_key=True)
+    value = Column(String)
+
+    @classmethod
+    def get(cls, session: Session, key: str, default_value=None):
+        param = session.query(cls).get(key)
+        if param is None:
+            param = Parameters(key, default_value)
+            session.add(param)
+            session.commit()
+            return default_value
+        return json.loads(param.value)
+
+    @classmethod
+    def set(cls, session: Session, key: str, value):
+        param = session.query(cls).get(key)
+        if param is None:
+            param = Parameters(key, value)
+            session.add(param)
+        else:
+            param.value = json.dumps(value)
+        session.commit()
+
