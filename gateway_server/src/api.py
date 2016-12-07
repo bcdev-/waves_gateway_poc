@@ -12,6 +12,7 @@ from extensions.forms import list_of_forms
 from pyblake2 import blake2b
 import curve25519
 from base58 import b58decode
+from .currency import currencies
 
 flask = Flask(__name__)
 
@@ -53,6 +54,7 @@ def wac_headers(f):
                 wac['public_key'] = account.public_key
                 wac['address'] = account.address
                 wac['asset_id'] = wac_session.asset_id
+                wac['currency'] = currencies[wac['asset_id']]
 
             else:
                 # TODO: We don't need a timestamp. Let's just settle on nonce+auth_hash
@@ -63,6 +65,7 @@ def wac_headers(f):
                 wac['asset_id'] = request.args['Asset-Id']
                 assert(request.args['Address'] == public_key_to_account(wac['public_key']))
                 wac['address'] = request.args['Address']
+                wac['currency'] = currencies[wac['asset_id']]
 
                 verify_auth_hash(wac)
 

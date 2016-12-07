@@ -3,7 +3,7 @@ from flask import Flask, request, Response
 from waitress import serve
 from src.models import BankDeposit, BankWithdrawal, Account
 from src import Session
-from src.cfg import assets
+from src.currency import currencies
 
 flask = Flask(__name__)
 
@@ -19,7 +19,7 @@ def index():
         if account is None:
             return "There is no account with IBAN %s" % (iban)
 
-        deposit = BankDeposit(account.address, assets[0]["id"], amount)
+        deposit = BankDeposit(account.address, list(currencies.values())[0], amount)
         session.add(deposit)
         session.commit()
         return """Your deposit to %s for %d.%.2d EQD was made""" % (iban, amount / (10.**assets[0]["digits"]),

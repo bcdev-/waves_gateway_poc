@@ -8,6 +8,7 @@ from . import cfg, Base
 from extensions.banking_models import AccountExt, BankDepositExt, BankWithdrawalExt
 from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger, Boolean
 from sqlalchemy.orm.session import Session
+from .currency import currencies
 
 
 class Account(Base, AccountExt):
@@ -121,18 +122,17 @@ class BankDeposit(Base, BankDepositExt):
 
     @property
     def currency_name(self) -> str:
-        for asset in cfg.assets:
-            if asset['id'] == self.currency:
-                return asset['name']
+        if self.currency in currencies:
+            return currencies[self.currency].name
         return "UnknownCurrency<%s>" % self.currency
 
     @property
     def amount_formatted(self) -> str:
-        for asset in cfg.assets:
-            if asset['id'] == self.currency:
-                format = "%%d.%%.%dd%%s" % asset['digits']
-                return format % (int(self.amount / (10**asset['digits'])),
-                                 int(self.amount % (10**asset['digits'])), asset['suffix'])
+        currency = currencies[self.currency]
+
+        str_format = "%%d.%%.%dd%%s" % currency.decimals
+        return str_format % (int(self.amount / (10**currency.decimals)),
+                             int(self.amount % (10**currency.decimals)), currency.suffix)
 
     already_accounted = Column(Boolean, default=False, index=True)
     waves_transaction_id = Column(String, nullable=True, default=None)

@@ -26,11 +26,11 @@ def details_form(wac, session: Session, form_name: str, account: Account):
         s = "Welcome %s!<br/><br/>" % account.kyc_name
         s += "Account verification: <font color='#0a0'>OK</font>. Withdrawal limit per day: $2000/$2000.<br/><br/>"
 
-        asset = cfg.assets[0]
-        format = "%%d.%%.%dd%%s" % asset['digits']
-        amount = get_currency_balance(account.address, wac['asset_id'])
-        balance = format % (int(amount / (10 ** asset['digits'])),
-                         int(amount % (10 ** asset['digits'])), asset['suffix'])
+        currency = wac['currency']
+        format = "%%d.%%.%dd%%s" % currency.decimals
+        amount = get_currency_balance(account.address, currency.id)
+        balance = format % (int(amount / (10 ** currency.decimals)),
+                         int(amount % (10 ** currency.decimals)), currency.suffix)
 
         s += "<a href='/v1/forms/change_your_data?Session-Id=%s'>Change your data</a><br/><br/>" % wac['session_id']
 

@@ -107,6 +107,18 @@ def get_waves_balance(address: str) -> int:
         raise NodeError()
 
 
+def get_transaction(transaction_id: str) -> dict:
+    try:
+        # TODO: Meaningful attachment
+        url = waves_api_url + "/transactions/info/%s" % transaction_id
+        r = get(url)
+        return r.json()
+
+    except Exception:
+        # TODO: Log the error message from the node if available
+        raise NodeError()
+
+
 class TestNode(TestCase):
     def test_new_deposit_account(self):
         a1 = get_new_deposit_account()

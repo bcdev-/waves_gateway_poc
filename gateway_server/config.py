@@ -11,13 +11,7 @@ gateway_address = "3N3qmHa1MBo3ZjDYJZbHNezY4RfhtTFxjXG"
 
 default_fee = 100000
 
-assets = [
-    {
-        "id": "SsWUnvrBLJjxsqQedKjG4wtR2UyJGoWL4AU6UqRHhge",
-        "name": "US Dollar",
-        "digits": 2,
-        "suffix": " USD"
-    }]
+currencies = ["BEbJsWWmyGtUuNtFckRFkmHq4ivw2EEYZJw5q74WUiBm"]
 
 # TODO: Honor confirmations
 confirmations = 1
