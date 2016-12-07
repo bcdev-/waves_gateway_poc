@@ -13,17 +13,17 @@ def index():
     session = Session()
     if "account" in request.form and "amount" in request.form:
         iban = request.form["account"]
-        amount = int(float(request.form["amount"]) * (10**assets[0]["digits"]))
+        amount = int(float(request.form["amount"]) * (10**list(currencies.values())[0].decimals))
 
         account = session.query(Account).filter_by(iban=iban).first()
         if account is None:
             return "There is no account with IBAN %s" % (iban)
 
-        deposit = BankDeposit(account.address, list(currencies.values())[0], amount)
+        deposit = BankDeposit(account.address, list(currencies.values())[0].id, amount)
         session.add(deposit)
         session.commit()
-        return """Your deposit to %s for %d.%.2d EQD was made""" % (iban, amount / (10.**assets[0]["digits"]),
-                                                                    amount % (10.**assets[0]["digits"]))
+        return """Your deposit to %s for %d.%.2d EQD was made""" % (iban, amount / (10.**(list(currencies.values())[0].decimals)),
+                                                                    amount % (10.**(list(currencies.values())[0].decimals)))
     session.commit()
     return """Welcome to the Bank simulator!<br/>Make a deposit:
     <form method='POST' action='/'>

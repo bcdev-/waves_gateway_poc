@@ -11,7 +11,7 @@ gateway_address = "3N3qmHa1MBo3ZjDYJZbHNezY4RfhtTFxjXG"
 
 default_fee = 100000
 
-currencies = ["BEbJsWWmyGtUuNtFckRFkmHq4ivw2EEYZJw5q74WUiBm"]
+currencies = ["SsWUnvrBLJjxsqQedKjG4wtR2UyJGoWL4AU6UqRHhge"]
 
 # TODO: Honor confirmations
 confirmations = 1
