@@ -13,11 +13,15 @@ from extensions.bank_manager import BankManager
 class BlockchainManager(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self)
-#        self.current_block = cfg.start_from_block
         self.bank_manager = BankManager()
 
     def run(self):
         logging.info("Blockchain manager started")
+
+        if cfg.rescan_blockchain:
+            session = Session()
+            Parameters.set(session, "current_block", cfg.start_from_block)
+            session.commit()
 
         # TODO: Deal with double-spent transactions
         # TODO: Try&catch

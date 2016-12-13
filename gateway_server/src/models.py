@@ -14,11 +14,11 @@ from .currency import currencies
 class Account(Base, AccountExt):
     __tablename__ = 'accounts'
 
-    def __init__(self, address, public_key, deposit_address):
-        AccountExt.__init__(self)
+    def __init__(self, address, public_key, deposit_address, *args, **kwargs):
         self.address = address
         self.public_key = public_key
         self.deposit_address = deposit_address
+        AccountExt.__init__(self, *args, **kwargs)
 
     # TODO: Active&Inactive account
     address = Column(String, unique=True, primary_key=True)
@@ -27,7 +27,7 @@ class Account(Base, AccountExt):
 
     def __repr__(self):
         return "<Account(public_key='%s', address='%s')>" % (
-                         self.public_key, self.address)
+            self.public_key, self.address)
 
 
 class Balance(Base):
@@ -131,32 +131,43 @@ class BankDeposit(Base, BankDepositExt):
         currency = currencies[self.currency]
 
         str_format = "%%d.%%.%dd%%s" % currency.decimals
-        return str_format % (int(self.amount / (10**currency.decimals)),
-                             int(self.amount % (10**currency.decimals)), currency.suffix)
+        return str_format % (int(self.amount / (10 ** currency.decimals)),
+                             int(self.amount % (10 ** currency.decimals)), currency.suffix)
 
     already_accounted = Column(Boolean, default=False, index=True)
     waves_transaction_id = Column(String, nullable=True, default=None)
 
+    # TODO: Add timestamp
+
 
 class BankWithdrawal(Base, BankWithdrawalExt):
     __tablename__ = 'bank_withdrawal'
+    WITHDRAWAL_ID_LENGTH = 32
+
+    def __init__(self, *args, **kwargs):
+        self.withdrawal_id = ''.join(random.choice(string.digits + string.ascii_uppercase + string.ascii_lowercase)
+                                  for _ in range(self.WITHDRAWAL_ID_LENGTH))
+        BankWithdrawalExt.__init__(self, *args, **kwargs)
 
     address = Column(String, ForeignKey('accounts.address'), index=True)
-    # Blockchain asset ID
-    currency = Column(String)
+    withdrawal_id = Column(String, primary_key=True)
+    currency = Column(String)  # Asset ID
     amount = Column(BigInteger)
 
-    already_accounted = Column(Boolean, default=False, index=True)
+    accepted_for_execution = Column(Boolean, default=False, index=True)
+    executed = Column(Boolean, default=False, index=True)
+    # TODO: Timestamp to purge old, not_accepted_for_execution withdrawals.
 
 
 class WACSession(Base):
     __tablename__ = 'wac_sessions'
-    SESSION_ID_LENGTH = 64
+    SESSION_ID_LENGTH = 32
 
     def __init__(self, address, asset_id):
         self.address = address
         self.asset_id = asset_id
         self.timeout = int(time.time()) + cfg.session_timeout
+        # TODO: Make sure to use a secure source of randomness here
         self.session_id = ''.join(random.choice(string.digits + string.ascii_uppercase + string.ascii_lowercase)
                                   for _ in range(self.SESSION_ID_LENGTH))
 
@@ -200,4 +211,3 @@ class Parameters(Base):
         else:
             param.value = json.dumps(value)
         session.commit()
-

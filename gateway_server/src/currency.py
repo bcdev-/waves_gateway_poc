@@ -1,5 +1,6 @@
 from .cfg import currencies
 from .node import get_transaction
+import json
 
 
 class Currency:
@@ -8,8 +9,14 @@ class Currency:
         self.name = name
         self.description = description
         self.decimals = decimals
-        self.prefix = ""
-        self.suffix = " USD"
+
+        d = json.loads(description)
+
+        self.prefix = d['prefix']
+        self.suffix = d['suffix']
+
+        # TODO: 1. Check if communication_public_key is the same
+        # TODO: 2. Add support for multiple communication keys for multiple currencies - someone might need it
 
 
 def _read_all_currencies():

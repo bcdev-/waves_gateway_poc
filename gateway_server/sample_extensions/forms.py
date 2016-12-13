@@ -1,26 +1,31 @@
 from sqlalchemy.orm.session import Session
 from flask import request
 
-from src.models import Account, Balance, BlockchainTransaction, BankDeposit
+from src.models import Account, Balance, BlockchainTransaction, BankDeposit, BankWithdrawal
 from src import cfg
 from src.node import get_currency_balance
+
+
+def kyc_incomplete(wac):
+    s = "Greetings! Welcome to out bank!<br/>"
+    s += "Fill in KYC:<form action='/v1/forms/kyc'>"
+    s += "Your name: <input name='name'/><br/><br/>"
+    s += """Your country:
+    <select name="country">
+      <option value="usa">United States</option>
+      <option value="iran">Iran</option>
+    </select>
+    """
+    s += "<input type='submit'/>"
+    s += "<input type='hidden' name='Session-Id' value='%s'/>" % wac['session_id']
+    s += "</form>"
+    return s
 
 
 # TODO: Declare WAC as a class
 def details_form(wac, session: Session, form_name: str, account: Account):
     if account.kyc_completed is False:
-        s = "Greetings! Welcome to out bank!<br/>"
-        s += "Fill in KYC:<form action='/v1/forms/kyc'>"
-        s += "Your name: <input name='name'/><br/><br/>"
-        s += """Your country:
-<select name="country">
-  <option value="usa">United States</option>
-  <option value="iran">Iran</option>
-</select>
-"""
-        s += "<input type='submit'/>"
-        s += "<input type='hidden' name='Session-Id' value='%s'/>" % wac['session_id']
-        s += "</form>"
+        s = kyc_incomplete(wac)
 
     else:
         s = "Welcome %s!<br/><br/>" % account.kyc_name
@@ -55,20 +60,19 @@ def kyc(wac, session: Session, form_name: str, account: Account):
 
 def withdraw(wac, session: Session, form_name: str, account: Account):
     if account.kyc_completed is False:
-        s = "Greetings! Welcome to Coinomat!<br/>"
-        s += "Fill in KYC:<form action='/v1/forms/kyc'>"
-        s += "Your name: <input name='name'/>"
-        s += "<input type='submit'/>"
-        s += "<input type='hidden' name='Session-Id' value='%s'/>" % wac['session_id']
-        s += "</form>"
+        s = kyc_incomplete(wac)
     elif 'bank_account' in request.args:
         # TODO: Obviously validate the account number.
+        withdrawal = BankWithdrawal(request.args['bank_account'])
+        session.add(withdrawal)
+        session.commit()
+        attachment = "%s" % withdrawal.withdrawal_id
         s = """
         Welcome %s!<br/>
         You are about to withdraw your money to an account number %s.<br/>
         Money transfer can take up to 3 days depending on the weather and star alignment.</br>
-        <input type='submit' value='Continue withdrawal' onclick="window.top.postMessage(['transfer', 'target_account_number', 'You are about to withdraw money to %s. This is not functional yet, but will be in the future.'], '*');"/><br/><br/><br/>
-        """ % (account.kyc_name, request.args['bank_account'], request.args['bank_account'])
+        <input type='submit' value='Continue withdrawal' onclick="window.top.postMessage(['transfer', '%s', 'You are about to withdraw money to %s.\\nThis is not functional yet, but it will be in the future. :-)\\nAttachment for the withdrawal: %s\\n', '%s'], '*');"/><br/><br/><br/>
+        """ % (account.kyc_name, request.args['bank_account'], account.deposit_address, request.args['bank_account'], attachment, attachment)
     else:
         s = """
         Welcome %s!<br/>

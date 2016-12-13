@@ -22,8 +22,8 @@ def index():
         deposit = BankDeposit(account.address, list(currencies.values())[0].id, amount)
         session.add(deposit)
         session.commit()
-        return """Your deposit to %s for %d.%.2d EQD was made""" % (iban, amount / (10.**(list(currencies.values())[0].decimals)),
-                                                                    amount % (10.**(list(currencies.values())[0].decimals)))
+        return """Your deposit to %s for %d.%.2d USD was made""" % (iban, amount / (10.**list(currencies.values())[0].decimals),
+                                                                    amount % (10.**list(currencies.values())[0].decimals))
     session.commit()
     return """Welcome to the Bank simulator!<br/>Make a deposit:
     <form method='POST' action='/'>

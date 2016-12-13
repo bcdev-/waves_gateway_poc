@@ -16,7 +16,6 @@ from .currency import currencies
 
 flask = Flask(__name__)
 
-privkey = b'\x88rz\x037{\xfb\xa1\xb3e\\^\xcb\x97\x8d\xa1q\xe0$\xaa\xd7"\xeeI\xff\xf9!Jt~pa'
 base58_public_key_max_length = 50
 base58_asset_id_max_length = 50
 
@@ -27,9 +26,9 @@ def verify_auth_hash(wac):
     assert(len(wac['public_key']) <= base58_public_key_max_length)
     assert(len(wac['asset_id']) <= base58_asset_id_max_length)
     public_key = b58decode(wac['public_key'])
-    shared_key = curve25519.shared(privkey, public_key)
+    shared_key = curve25519.shared(cfg.gateway_communication_private_key, public_key)
     out = ""
-    for letter in curve25519.public(privkey):
+    for letter in curve25519.public(cfg.gateway_communication_private_key):
         out += str(letter) + ','
     b = blake2b(digest_size=32)
     b.update(shared_key + wac['auth_nonce'] + b58decode(wac['asset_id']) + public_key)
