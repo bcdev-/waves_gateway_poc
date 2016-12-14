@@ -3,9 +3,10 @@ import logging
 import time
 from src.node import send_currency
 from . import Session, node, cfg
-from .models import Account, Balance, BlockchainTransaction, BankDeposit, Parameters
+from .models import Account, BlockchainTransaction, BankDeposit, Parameters, BankWithdrawal
 from .transaction import TransactionTypes
 from extensions.bank_manager import BankManager
+from base58 import b58decode
 
 
 # BlockchainManager is single-threaded for now
@@ -38,20 +39,20 @@ class BlockchainManager(multiprocessing.Process):
                 self._scan_block(session, current_block)
                 current_block += 1
                 Parameters.set(session, "current_block", current_block)
-            self._update_balances(session)
+            # self._update_balances(session)
             self.bank_manager.tick(session)
 
             # I'm assuming that we're withdrawing to the wallet immediately for now
             # self._account_banking_deposits(session)
-            self._withdraw_banking_deposits(session)
+            self._handle_deposits(session)
+            self._handle_withdrawals(session)
 
             session.commit()
             session.flush()
             time.sleep(1)
 
     @staticmethod
-    def _withdraw_banking_deposits(session: Session):
-        # Bank deposit can either be "accounted" or it can be withdrawn to the wallet
+    def _handle_deposits(session: Session):
         # TODO: Add additional if's for KYC and such things
         new_deposits = session.query(BankDeposit).filter_by(already_accounted=False, waves_transaction_id=None)
         for deposit in new_deposits:
@@ -69,23 +70,14 @@ class BlockchainManager(multiprocessing.Process):
                 send_currency(None, deposit.address, 10000000)
 
     @staticmethod
-    def _update_balances(session):
-        new_transactions = session.query(BlockchainTransaction).filter_by(already_accounted=False)
-        for transaction in new_transactions:
-            # TODO: Please rewrite this... If someone runs two BlockchainManagers at once everything will go to...
-            balance = session.query(Balance).filter_by(address=transaction.address, currency=transaction.currency).first()
-            balance.balance += transaction.amount
-            transaction.already_accounted = True
-
-    @staticmethod
-    def _account_banking_deposits(session):
-        # Bank deposit can either be "accounted" or it can be withdrawn to the wallet
-        new_deposits = session.query(BankDeposit).filter_by(already_accounted=False, waves_transaction_id=None)
-        for deposit in new_deposits:
-            # TODO: Please rewrite this... If someone runs two BlockchainManagers at once everything will go to...
-            balance = session.query(Balance).filter_by(address=deposit.address, currency=deposit.currency).first()
-            balance.balance += deposit.amount
-            deposit.already_accounted = True
+    def _handle_withdrawals(session):
+        withdrawals = session.query(BankWithdrawal).filter_by(transaction_id=None, accepted=False)
+        for withdrawal in withdrawals:
+            transaction = session.query(BlockchainTransaction).filter_by(attachment=withdrawal.withdrawal_id).first()
+            if transaction is not None:
+                withdrawal.accept(transaction)
+#                withdrawal.transaction_id = transaction.transaction_id
+#                withdrawal.accepted = True
 
     @staticmethod
     def _scan_block(session, height):
@@ -94,10 +86,13 @@ class BlockchainManager(multiprocessing.Process):
             if tx["type"] == TransactionTypes.transfer_asset:
                 account = session.query(Account).filter_by(deposit_address=tx["recipient"]).first()
                 if account and session.query(BlockchainTransaction).get(tx["id"]) is None:
-                    logging.info("♡ A new deposit transaction received. - %s" % tx["id"])
+                    attachment = ''.join(chr(x) for x in b58decode(tx["attachment"]))
+                    logging.info("\t❤❤❤❤ A new withdrawal transaction received. - %s" % tx["id"])
                     logging.info("\tFrom %s" % account.address)
+                    logging.info("\tTo %s" % tx["recipient"])
                     logging.info("\tAsset %s" % tx["assetId"])
                     logging.info("\tAmount %d" % tx["amount"])
+                    logging.info("\tAttachment %s" % attachment)
                     # TODO: Check if currency is defined
-                    blockchain_transaction = BlockchainTransaction(tx["id"], account.address, tx["type"], tx["timestamp"], tx["assetId"], tx["amount"])
+                    blockchain_transaction = BlockchainTransaction(tx["id"], account.address, tx["type"], tx["timestamp"], attachment, tx["assetId"], tx["amount"])
                     session.add(blockchain_transaction)

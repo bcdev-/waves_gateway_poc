@@ -21,7 +21,7 @@ currencies = ["6EZjjcsJGT35UGPCDUkcahJD33vXsVeZ6kxsCZ7jzoHw"]
 confirmations = 1
 
 start_from_block = 1730
-rescan_blockchain = True
+rescan_blockchain = False
 
 import logging
 logging.getLogger("requests").setLevel(logging.WARNING)

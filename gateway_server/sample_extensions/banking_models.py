@@ -45,3 +45,12 @@ class BankWithdrawalExt:
 
 # Miscellaneous models
 
+class BankSimBalances(Base):
+    __tablename__ = "banksim_balances"
+
+    def __init__(self, account, amount):
+        self.bank_account = account
+        self.balance = amount
+
+    bank_account = Column(String, primary_key=True)
+    balance = Column(Integer, default=0)

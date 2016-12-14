@@ -1,7 +1,7 @@
 from sqlalchemy.orm.session import Session
 from flask import request
 
-from src.models import Account, Balance, BlockchainTransaction, BankDeposit, BankWithdrawal
+from src.models import Account, BlockchainTransaction, BankDeposit, BankWithdrawal
 from src import cfg
 from src.node import get_currency_balance
 
@@ -58,6 +58,10 @@ def kyc(wac, session: Session, form_name: str, account: Account):
     return "KYC completed. Your account number is: %s" % account.iban
 
 
+def string_to_javascript_array(string):
+    return str([ord(c) for c in string])
+
+
 def withdraw(wac, session: Session, form_name: str, account: Account):
     if account.kyc_completed is False:
         s = kyc_incomplete(wac)
@@ -71,8 +75,8 @@ def withdraw(wac, session: Session, form_name: str, account: Account):
         Welcome %s!<br/>
         You are about to withdraw your money to an account number %s.<br/>
         Money transfer can take up to 3 days depending on the weather and star alignment.</br>
-        <input type='submit' value='Continue withdrawal' onclick="window.top.postMessage(['transfer', '%s', 'You are about to withdraw money to %s.\\nThis is not functional yet, but it will be in the future. :-)\\nAttachment for the withdrawal: %s\\n', '%s'], '*');"/><br/><br/><br/>
-        """ % (account.kyc_name, request.args['bank_account'], account.deposit_address, request.args['bank_account'], attachment, attachment)
+        <input type='submit' value='Continue withdrawal' onclick="window.top.postMessage(['transfer', '%s', 'You are about to withdraw money to %s.\\nThis is not functional yet, but it will be in the future. :-)\\nAttachment for the withdrawal: %s\\n', %s], '*');"/><br/><br/><br/>
+        """ % (account.kyc_name, request.args['bank_account'], account.deposit_address, request.args['bank_account'], attachment, string_to_javascript_array(attachment))
     else:
         s = """
         Welcome %s!<br/>

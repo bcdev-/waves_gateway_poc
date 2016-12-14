@@ -30,66 +30,32 @@ class Account(Base, AccountExt):
             self.public_key, self.address)
 
 
-class Balance(Base):
-    __tablename__ = 'balances'
-
-    def __init__(self, address, currency):
-        self.address = address
-        self.currency = currency
-
-    address = Column(String, ForeignKey('accounts.address'), primary_key=True)
-    currency = Column(String, primary_key=True)
-    balance = Column(BigInteger, default=0)
-    withdraw_to_blockchain_balance = Column(BigInteger, default=0)
-    withdraw_to_blockchain_automatically = Column(Boolean, default=True)
-
-    @property
-    def currency_name(self) -> str:
-        for asset in cfg.assets:
-            if asset['id'] == self.currency:
-                return asset['name']
-        return "UnknownCurrency<%s>" % self.currency
-
-    @staticmethod
-    def get_all_balances(session: Session, account: Account):
-        balances = session.query(Balance).filter_by(address=account.address).all()
-        final_balances = []
-        missing_currencies = set([id["id"] for id in cfg.assets])
-        for balance in balances:
-            if balance.currency not in missing_currencies:
-                logging.warning("Currency %s is not defined in configuration!" % balance.currency)
-            else:
-                missing_currencies.remove(balance.currency)
-                final_balances.append(balance)
-
-        for currency in missing_currencies:
-            logging.debug("Adding balance to DB: %s %s" % (account.address, currency))
-            balance = Balance(account.address, currency)
-            final_balances.append(balance)
-            # TODO: Temporary! The only part that commits ANY balances should be a blockchain manager!
-            session.add(balance)
-            session.commit()
-        return final_balances
-
-
+# if incoming_blockchain_transaction->attachment == bank_withdrawal->attachment:
+#   process_withdrawal
+# else:
+#   send_back_refund
+# TODO: Rename to IncomingTransaction... Or WithdrawalTransaction
 class BlockchainTransaction(Base):
     __tablename__ = 'blockchain_transactions'
 
-    def __init__(self, transaction_id, address, type, timestamp, currency=None, amount=None):
+    def __init__(self, transaction_id, address, type, timestamp, attachment, currency=None, amount=None):
         self.transaction_id = transaction_id
         self.address = address
         self.type = type
         self.currency = currency
         self.amount = amount
         self.timestamp = timestamp
+        self.attachment = attachment
 
     # TODO: Block [confirmations]
     transaction_id = Column(String, primary_key=True)
+    # TODO: Rename address to user
     address = Column(String, ForeignKey('accounts.address'), index=True)
     type = Column(Integer)
     timestamp = Column(BigInteger)
     currency = Column(String, nullable=True)
     amount = Column(BigInteger, nullable=True)
+    attachment = Column(String, index=True)
 
     already_accounted = Column(Boolean, default=False, index=True)
 
@@ -136,7 +102,6 @@ class BankDeposit(Base, BankDepositExt):
 
     already_accounted = Column(Boolean, default=False, index=True)
     waves_transaction_id = Column(String, nullable=True, default=None)
-
     # TODO: Add timestamp
 
 
@@ -149,15 +114,24 @@ class BankWithdrawal(Base, BankWithdrawalExt):
                                   for _ in range(self.WITHDRAWAL_ID_LENGTH))
         BankWithdrawalExt.__init__(self, *args, **kwargs)
 
+    def accept(self, transaction: BlockchainTransaction):
+        assert(self.accepted is False)
+        self.currency = transaction.currency
+        self.amount = transaction.amount  # TODO: Withdrawal fee - right now 0%
+        self.transaction_id = transaction.transaction_id
+        self.address = transaction.address
+        self.accepted = True
+
     address = Column(String, ForeignKey('accounts.address'), index=True)
     withdrawal_id = Column(String, primary_key=True)
     currency = Column(String)  # Asset ID
     amount = Column(BigInteger)
-
-    accepted_for_execution = Column(Boolean, default=False, index=True)
+    transaction_id = Column(String, ForeignKey('blockchain_transactions.transaction_id'), nullable=True)
+    # TODO: Timestamp to purge old failed withdrawals.
+    accepted = Column(Boolean, default=False, index=True)
     executed = Column(Boolean, default=False, index=True)
-    # TODO: Timestamp to purge old, not_accepted_for_execution withdrawals.
 
+    # TODO: For now refunds should be manual, I think.
 
 class WACSession(Base):
     __tablename__ = 'wac_sessions'
